@@ -1,0 +1,1020 @@
+<Window x:Class="AirPDF.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="AirPDF"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Width="1100"
+        Height="760"
+        MinWidth="780"
+        MinHeight="480"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        Background="{DynamicResource BgApp}"
+        FontFamily="Segoe UI, Consolas"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragOver="Window_DragOver"
+        DragLeave="Window_DragLeave"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        Loaded="Window_Loaded"
+        SizeChanged="Window_SizeChanged">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Border BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Border x:Name="Toolbar"
+                    Grid.Row="0"
+                    Background="{DynamicResource BgPanel}"
+                    BorderThickness="0"
+                    Padding="10,2"
+                    MouseLeftButtonDown="Toolbar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <!-- Tools may clip; chrome column always keeps min/max/close visible. -->
+                        <ColumnDefinition Width="*" MinWidth="0"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid Grid.Column="0" ClipToBounds="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*" MinWidth="0"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                    <!-- Left: AirPDF menu + quick action icons -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Menu x:Name="AppMainMenu"
+                              Style="{StaticResource AppMenu}"
+                              Height="36"
+                              VerticalAlignment="Center"
+                              Margin="0,0,8,0"
+                              shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                            <MenuItem Header="AirPDF"
+                                      Style="{StaticResource AppMenuRootItem}"
+                                      VerticalAlignment="Center"
+                                      SubmenuOpened="AppMenu_SubmenuOpened">
+                                <MenuItem x:Name="AppSidebarNavMenuItem"
+                                          Header="Панель навигации"
+                                          InputGestureText="F4"
+                                          Style="{StaticResource AppSubMenuItem}"
+                                          Click="SidebarToggle_Click"/>
+                                <MenuItem x:Name="AppFullscreenMenuItem"
+                                          Header="Во весь экран"
+                                          InputGestureText="F11"
+                                          Style="{StaticResource AppSubMenuItem}"
+                                          Click="Fullscreen_Click"/>
+                                <Separator Style="{StaticResource AppMenuSeparator}"/>
+                                <MenuItem Header="Настройка"
+                                          Style="{StaticResource AppSubMenuItem}"
+                                          Click="Settings_Click"/>
+                                <MenuItem Header="О программе"
+                                          Style="{StaticResource AppSubMenuItem}"
+                                          Click="About_Click"/>
+                                <Separator Style="{StaticResource AppMenuSeparator}"/>
+                                <MenuItem Header="Выход"
+                                          Style="{StaticResource AppSubMenuItem}"
+                                          Click="Exit_Click"/>
+                            </MenuItem>
+                        </Menu>
+
+                        <!-- Block 1: Open + recent dropdown -->
+                        <Border Background="{DynamicResource GroupBg}"
+                                BorderBrush="{DynamicResource GroupBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="2"
+                                Margin="0,0,6,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="OpenButton"
+                                        Style="{StaticResource ToolbarLabeledButton}"
+                                        Padding="8,0,8,0"
+                                        ToolTip="Открыть (Ctrl+O)"
+                                        Click="Open_Click"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8E5;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="15"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="OpenLabel"
+                                                   Text="Открыть"
+                                                   Margin="6,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Border Width="1"
+                                        Background="{DynamicResource GroupBorder}"
+                                        Margin="0,5"/>
+                                <Button x:Name="OpenRecentDropButton"
+                                        Style="{StaticResource ToolbarLabeledButton}"
+                                        Padding="6,0"
+                                        Width="28"
+                                        ToolTip="Недавние файлы"
+                                        Click="OpenRecentDrop_Click"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <Button.ContextMenu>
+                                        <ContextMenu x:Name="OpenRecentMenu"/>
+                                    </Button.ContextMenu>
+                                    <TextBlock Text="&#xE70D;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center"/>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Block 2: Print + Export -->
+                        <Border Background="{DynamicResource GroupBg}"
+                                BorderBrush="{DynamicResource GroupBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="2">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="PrintButton"
+                                        Style="{StaticResource ToolbarLabeledButton}"
+                                        Margin="0,0,2,0"
+                                        ToolTip="Печать (Ctrl+P)"
+                                        Click="Print_Click"
+                                        IsEnabled="False"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE749;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="15"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="PrintLabel"
+                                                   Text="Печать"
+                                                   Margin="6,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button x:Name="ExportButton"
+                                        Style="{StaticResource ToolbarLabeledButton}"
+                                        ToolTip="Экспорт в Microsoft Word"
+                                        Click="Export_Click"
+                                        IsEnabled="False"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xEDE1;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="15"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="ExportLabel"
+                                                   Text="Экспорт"
+                                                   Margin="6,0,0,0"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Center: file name between left actions and right tools -->
+                    <TextBlock x:Name="FileNameText"
+                               Grid.Column="1"
+                               Text=""
+                               Foreground="{DynamicResource TextMuted}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               Margin="12,0"/>
+
+                    <!-- Right tools (search / pages / zoom); may collapse on narrow windows -->
+                    <StackPanel x:Name="ToolbarToolsPanel"
+                                Grid.Column="2"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="4,0,0,0">
+                        <!-- Search group -->
+                        <Border x:Name="SearchGroup"
+                                Background="{DynamicResource GroupBg}"
+                                BorderBrush="{DynamicResource GroupBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border x:Name="SearchBoxHost"
+                                        Width="200"
+                                        MinWidth="200"
+                                        MaxWidth="200"
+                                        Background="{DynamicResource BgInput}"
+                                        BorderBrush="{DynamicResource BorderStrong}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="0">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="28"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE721;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="13"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   IsHitTestVisible="False"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                        <Grid Grid.Column="1">
+                                            <TextBox x:Name="SearchBox"
+                                                     Style="{StaticResource CursorTextBox}"
+                                                     Background="Transparent"
+                                                     BorderThickness="0"
+                                                     Padding="0,4,22,4"
+                                                     TextAlignment="Left"
+                                                     HorizontalContentAlignment="Left"
+                                                     IsEnabled="False"
+                                                     ToolTip="Поиск (Ctrl+F)"
+                                                     KeyDown="SearchBox_KeyDown"
+                                                     TextChanged="SearchBox_TextChanged"
+                                                     shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                            <TextBlock x:Name="SearchPlaceholder"
+                                                       Text="Поиск"
+                                                       IsHitTestVisible="False"
+                                                       VerticalAlignment="Center"
+                                                       HorizontalAlignment="Left"
+                                                       Margin="0,0,0,0"
+                                                       FontSize="12"
+                                                       Foreground="{DynamicResource TextMuted}"/>
+                                            <Button x:Name="SearchClearButton"
+                                                    Width="18"
+                                                    Height="18"
+                                                    Margin="0,0,3,0"
+                                                    Padding="0"
+                                                    HorizontalAlignment="Right"
+                                                    VerticalAlignment="Center"
+                                                    FontFamily="Segoe MDL2 Assets"
+                                                    FontSize="10"
+                                                    Content="&#xE711;"
+                                                    ToolTip="Очистить"
+                                                    Visibility="Collapsed"
+                                                    Focusable="False"
+                                                    Style="{StaticResource IconButton}"
+                                                    Click="SearchClear_Click"
+                                                    shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                                <Button x:Name="SearchPrevButton"
+                                        Content="↑"
+                                        Style="{StaticResource IconButton}"
+                                        Margin="4,0,0,0"
+                                        IsEnabled="False"
+                                        Click="SearchPrev_Click"
+                                        ToolTip="Предыдущее совпадение"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <Button x:Name="SearchNextButton"
+                                        Content="↓"
+                                        Style="{StaticResource IconButton}"
+                                        Margin="2,0,0,0"
+                                        IsEnabled="False"
+                                        Click="SearchNext_Click"
+                                        ToolTip="Следующее совпадение"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <TextBlock x:Name="SearchStatusText"
+                                           Text=""
+                                           Margin="6,0,2,0"
+                                           VerticalAlignment="Center"
+                                           FontSize="11"
+                                           Width="44"
+                                           TextAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{DynamicResource TextMuted}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Pages group -->
+                        <Border x:Name="PagesGroup"
+                                Background="{DynamicResource GroupBg}"
+                                BorderBrush="{DynamicResource GroupBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="PrevButton"
+                                        Content="‹"
+                                        Style="{StaticResource IconButton}"
+                                        Click="Prev_Click"
+                                        IsEnabled="False"
+                                        ToolTip="Предыдущая страница (←)"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <TextBox x:Name="PageBox"
+                                         Style="{StaticResource CursorTextBox}"
+                                         Width="64"
+                                         Margin="4,0,2,0"
+                                         TextAlignment="Center"
+                                         HorizontalContentAlignment="Center"
+                                         IsEnabled="False"
+                                         ToolTip="Номер страницы (Ctrl+G)"
+                                         KeyDown="PageBox_KeyDown"
+                                         LostFocus="PageBox_LostFocus"
+                                         shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <TextBlock x:Name="PageCountText"
+                                           Text="/ —"
+                                           Margin="0,0,4,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           FontSize="12"/>
+                                <Button x:Name="NextButton"
+                                        Content="›"
+                                        Style="{StaticResource IconButton}"
+                                        Click="Next_Click"
+                                        IsEnabled="False"
+                                        ToolTip="Следующая страница (→)"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Zoom group -->
+                        <Border x:Name="ZoomGroup"
+                                Background="{DynamicResource GroupBg}"
+                                BorderBrush="{DynamicResource GroupBorder}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="−"
+                                        Style="{StaticResource IconButton}"
+                                        Click="ZoomOut_Click"
+                                        ToolTip="Уменьшить (Ctrl+−)"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <TextBlock x:Name="ZoomText"
+                                           Text="100%"
+                                           MinWidth="40"
+                                           Margin="4,0"
+                                           TextAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimary}"
+                                           FontSize="12"/>
+                                <Button Content="+"
+                                        Style="{StaticResource IconButton}"
+                                        Click="ZoomIn_Click"
+                                        Margin="0,0,6,0"
+                                        ToolTip="Увеличить (Ctrl++)"
+                                        shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                <StackPanel x:Name="FitButtonsPanel" Orientation="Horizontal">
+                                    <Button x:Name="FitWidthButton"
+                                            Content="↔"
+                                            Style="{StaticResource IconButton}"
+                                            Click="FitWidth_Click"
+                                            IsEnabled="False"
+                                            ToolTip="По ширине"
+                                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                    <Button x:Name="FitHeightButton"
+                                            Content="↕"
+                                            Style="{StaticResource IconButton}"
+                                            Click="FitHeight_Click"
+                                            IsEnabled="False"
+                                            Margin="2,0,0,0"
+                                            ToolTip="По высоте"
+                                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                    <Button x:Name="FitPageButton"
+                                            Content="⛶"
+                                            Style="{StaticResource IconButton}"
+                                            Click="FitPage_Click"
+                                            IsEnabled="False"
+                                            Margin="2,0,0,0"
+                                            ToolTip="Страница целиком"
+                                            shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Button x:Name="OverflowButton"
+                                Content="⋯"
+                                Style="{StaticResource IconButton}"
+                                Margin="0,0,0,0"
+                                Visibility="Collapsed"
+                                ToolTip="Ещё"
+                                Click="OverflowButton_Click"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    </StackPanel>
+                    </Grid>
+
+                    <!-- Always-visible window chrome (own column — never clipped by tools). -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="4,0,0,0">
+                        <Border Width="1" Background="{DynamicResource BorderStrong}" Margin="0,4,8,4"/>
+                        <Button Style="{StaticResource IconButton}"
+                                Click="Minimize_Click"
+                                ToolTip="Свернуть"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="10"
+                                Content="&#xE921;"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        <Button x:Name="MaximizeButton"
+                                Style="{StaticResource IconButton}"
+                                Click="Maximize_Click"
+                                Margin="2,0,0,0"
+                                ToolTip="Развернуть"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="10"
+                                Content="&#xE922;"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                        <Button Style="{StaticResource IconButton}"
+                                Click="Close_Click"
+                                Margin="2,0,0,0"
+                                ToolTip="Закрыть"
+                                FontFamily="Segoe MDL2 Assets"
+                                FontSize="10"
+                                Content="&#xE8BB;"
+                                shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Background="{DynamicResource BgApp}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition x:Name="SidebarColumn" Width="230" MinWidth="0"/>
+                    <ColumnDefinition x:Name="SidebarSplitterColumn" Width="4"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="SidebarPanel"
+                        Grid.Column="0"
+                        Background="{DynamicResource SidebarBg}"
+                        BorderThickness="0">
+                    <TabControl x:Name="SidebarTabs"
+                                Margin="0"
+                                Padding="0"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                TabStripPlacement="Bottom"
+                                Style="{StaticResource SidebarTabControl}"
+                                ItemContainerStyle="{StaticResource SidebarTabItem}"
+                                SelectionChanged="SidebarTabs_SelectionChanged">
+                            <TabItem x:Name="PagesTab" Header="Страницы">
+                                <ListBox x:Name="ThumbnailList"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         Padding="6,6,2,6"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         ScrollViewer.ScrollChanged="ThumbnailList_ScrollChanged"
+                                         SelectionChanged="ThumbnailList_SelectionChanged"
+                                         FocusVisualStyle="{x:Null}">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem">
+                                            <Setter Property="Padding" Value="0"/>
+                                            <Setter Property="Margin" Value="0,0,0,10"/>
+                                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                            <Setter Property="Template">
+                                                <Setter.Value>
+                                                    <ControlTemplate TargetType="ListBoxItem">
+                                                        <Border x:Name="Bd"
+                                                                Background="Transparent"
+                                                                BorderBrush="Transparent"
+                                                                BorderThickness="2"
+                                                                CornerRadius="6"
+                                                                Padding="4,4,4,2"
+                                                                SnapsToDevicePixels="True">
+                                                            <ContentPresenter/>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgHover}"/>
+                                                            </Trigger>
+                                                            <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgActive}"/>
+                                                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
+                                                            </DataTrigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <Border x:Name="ThumbFrame"
+                                                        Background="White"
+                                                        BorderBrush="{DynamicResource BorderSubtle}"
+                                                        BorderThickness="1"
+                                                        HorizontalAlignment="Center"
+                                                        CornerRadius="2"
+                                                        MinHeight="72"
+                                                        MinWidth="56">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}"/>
+                                                                    <Setter Property="BorderThickness" Value="1.5"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Grid Width="120" Height="156">
+                                                        <!-- Skeleton while thumbnail loads -->
+                                                        <Border x:Name="Skeleton"
+                                                                CornerRadius="1"
+                                                                Background="{DynamicResource BgHover}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasImage}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding Label}"
+                                                                       Foreground="{DynamicResource TextMuted}"
+                                                                       FontSize="12"
+                                                                       HorizontalAlignment="Center"
+                                                                       VerticalAlignment="Center"
+                                                                       Opacity="0.7"/>
+                                                        </Border>
+                                                        <Image Source="{Binding Image}"
+                                                               Stretch="Uniform"
+                                                               RenderOptions.BitmapScalingMode="LowQuality"/>
+                                                    </Grid>
+                                                </Border>
+                                                <TextBlock Text="{Binding Label}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextMuted}"
+                                                           HorizontalAlignment="Center"
+                                                           Margin="0,5,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{DynamicResource TextBright}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </TabItem>
+                            <TabItem x:Name="OutlineTab" Header="Содержание">
+                                <Grid>
+                                    <TextBlock x:Name="OutlineEmptyText"
+                                               Text="В документе нет оглавления"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               Margin="12"
+                                               Visibility="Collapsed"
+                                               VerticalAlignment="Top"/>
+                                    <TreeView x:Name="OutlineTree"
+                                              Background="Transparent"
+                                              BorderThickness="0"
+                                              Padding="4,6"
+                                              SelectedItemChanged="OutlineTree_SelectedItemChanged"
+                                              FocusVisualStyle="{x:Null}">
+                                        <TreeView.ItemTemplate>
+                                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                                <TextBlock Text="{Binding Title}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Title}"
+                                                           FontSize="12"
+                                                           Foreground="{DynamicResource TextPrimary}"
+                                                           Margin="0,2"/>
+                                            </HierarchicalDataTemplate>
+                                        </TreeView.ItemTemplate>
+                                    </TreeView>
+                                </Grid>
+                            </TabItem>
+                    </TabControl>
+                </Border>
+
+                <GridSplitter x:Name="SidebarSplitter"
+                              Grid.Column="1"
+                              Width="4"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Background="Transparent"
+                              ShowsPreview="False"
+                              DragCompleted="SidebarSplitter_DragCompleted"/>
+
+                <Grid Grid.Column="2">
+                <ScrollViewer x:Name="ViewerScroll"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto"
+                              SnapsToDevicePixels="True"
+                              UseLayoutRounding="True"
+                              Padding="4"
+                              Background="Transparent"
+                              FocusVisualStyle="{x:Null}"
+                              PreviewMouseWheel="ViewerScroll_PreviewMouseWheel">
+                    <Border x:Name="PageFrame"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            SnapsToDevicePixels="True"
+                            UseLayoutRounding="True"
+                            Background="White"
+                            BorderBrush="{DynamicResource BorderStrong}"
+                            BorderThickness="1"
+                            Visibility="Collapsed"
+                            Cursor="IBeam">
+                        <Border.ContextMenu>
+                            <ContextMenu Opened="ViewerContextMenu_Opened">
+                                <MenuItem x:Name="CopyMenuItem"
+                                          Header="Копировать"
+                                          InputGestureText="Ctrl+C"
+                                          Click="CopySelection_Click"/>
+                                <MenuItem Header="Выделить всё"
+                                          InputGestureText="Ctrl+A"
+                                          Click="SelectAllText_Click"/>
+                                <MenuItem Header="Копировать текст страницы"
+                                          Click="CopyPageText_Click"/>
+                                <Separator/>
+                                <MenuItem Header="Повернуть вправо"
+                                          Click="RotateClockwise_Click"/>
+                                <MenuItem Header="Повернуть влево"
+                                          Click="RotateCounterClockwise_Click"/>
+                                <MenuItem Header="Сбросить поворот"
+                                          Click="RotateReset_Click"/>
+                                <Separator/>
+                                <MenuItem x:Name="SidebarNavMenuItem"
+                                          Header="Панель навигации"
+                                          InputGestureText="F4"
+                                          Click="SidebarToggle_Click"/>
+                                <MenuItem x:Name="FullscreenMenuItem"
+                                          Header="Во весь экран"
+                                          InputGestureText="F11"
+                                          Click="Fullscreen_Click"/>
+                            </ContextMenu>
+                        </Border.ContextMenu>
+                        <Grid x:Name="PageContent"
+                              Background="Transparent"
+                              SnapsToDevicePixels="True"
+                              UseLayoutRounding="True"
+                              PreviewMouseLeftButtonDown="PageContent_PreviewMouseLeftButtonDown"
+                              PreviewMouseMove="PageContent_PreviewMouseMove"
+                              PreviewMouseLeftButtonUp="PageContent_PreviewMouseLeftButtonUp"
+                              MouseLeave="PageContent_MouseLeave">
+                            <Image x:Name="PageImage"
+                                   Stretch="None"
+                                   IsHitTestVisible="False"
+                                   SnapsToDevicePixels="True"
+                                   UseLayoutRounding="True"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   RenderOptions.EdgeMode="Aliased"/>
+                            <Canvas x:Name="SelectionLayer"
+                                    IsHitTestVisible="False"/>
+                            <Canvas x:Name="HighlightLayer"
+                                    IsHitTestVisible="False"/>
+                        </Grid>
+                    </Border>
+                </ScrollViewer>
+
+                <Grid x:Name="EmptyState">
+                    <Border x:Name="EmptyDropZone"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            MaxWidth="440"
+                            MinWidth="340"
+                            Margin="24"
+                            Padding="28,28,28,22"
+                            CornerRadius="14"
+                            Background="{DynamicResource BgElevated}"
+                            BorderBrush="{DynamicResource BorderStrong}"
+                            BorderThickness="1.5">
+                        <StackPanel>
+                            <Image Source="pack://application:,,,/Assets/airPDF.png"
+                                   Width="80"
+                                   Height="80"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,10"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="AirPDF"
+                                       Style="{StaticResource DialogTitle}"
+                                       FontSize="28"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,6"/>
+                            <TextBlock Text="Перетащите PDF сюда"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontSize="16"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,4"/>
+                            <TextBlock Text="или выберите файл ниже"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,18"
+                                       Opacity="0.85"/>
+
+                            <Border x:Name="EmptyDropCue"
+                                    Margin="0,0,0,18"
+                                    Padding="14,16"
+                                    CornerRadius="10"
+                                    BorderThickness="1.5"
+                                    BorderBrush="{DynamicResource BorderStrong}"
+                                    Background="{DynamicResource BgPanel}"
+                                    Opacity="0.92">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="&#xE8E5;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="22"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,0,0,6"/>
+                                    <TextBlock Text="PDF"
+                                               FontSize="12"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Background="{DynamicResource BgInput}"
+                                    BorderBrush="{DynamicResource BorderSubtle}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12,10">
+                        <StackPanel>
+                            <TextBlock Text="Последние файлы"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBright}"
+                                       Margin="2,0,0,10"/>
+
+                            <Border Height="1"
+                                    Background="{DynamicResource BorderSubtle}"
+                                    Margin="0,0,0,8"/>
+
+                            <Button Click="Open_Click"
+                                    HorizontalContentAlignment="Stretch"
+                                    Cursor="Hand"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="6,7"
+                                    Margin="0,0,0,4">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd"
+                                                Background="Transparent"
+                                                CornerRadius="4"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgHover}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="15"
+                                               Foreground="#C9A227"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,10,0"/>
+                                    <TextBlock Text="Открыть файл"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource TextBright}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <ItemsControl x:Name="RecentFilesList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Tag="{Binding FilePath}"
+                                                ToolTip="{Binding FilePath}"
+                                                Click="RecentFile_Click"
+                                                HorizontalContentAlignment="Stretch"
+                                                Cursor="Hand"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Padding="6,7"
+                                                Margin="0,1">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border x:Name="Bd"
+                                                            Background="Transparent"
+                                                            CornerRadius="4"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgHover}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="&#xE8A5;"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="15"
+                                                           Foreground="#D35400"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,10,0"/>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding DisplayName}"
+                                                           FontSize="13"
+                                                           Foreground="{DynamicResource TextPrimary}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock x:Name="RecentEmptyHint"
+                                       Text="Пока нет недавних файлов"
+                                       FontSize="12"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       Margin="6,8,0,4"
+                                       Visibility="Collapsed"/>
+
+                            <Border Height="1"
+                                    Background="{DynamicResource BorderSubtle}"
+                                    Margin="0,8,0,8"/>
+
+                            <Button x:Name="ClearRecentButton"
+                                    Click="ClearRecent_Click"
+                                    HorizontalAlignment="Right"
+                                    Cursor="Hand"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="8,5">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd"
+                                                Background="Transparent"
+                                                CornerRadius="4"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource BgHover}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter Property="Opacity" Value="0.4"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE74D;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,6,0"/>
+                                    <TextBlock Text="Очистить всё"
+                                               FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Drag-over pulse overlay -->
+                    <Border x:Name="EmptyDropHighlight"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False"
+                            Background="#22000000">
+                        <Border HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Width="280"
+                                Height="120"
+                                CornerRadius="12"
+                                BorderBrush="{DynamicResource TextBright}"
+                                BorderThickness="2"
+                                Background="{DynamicResource BgElevated}"
+                                Opacity="0.95">
+                            <TextBlock Text="Отпустите, чтобы открыть"
+                                       FontFamily="{StaticResource DisplayFont}"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBright}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                    </Border>
+                </Grid>
+
+                <Border x:Name="LoadingOverlay"
+                        Background="{DynamicResource LoadingOverlayBg}"
+                        Visibility="Collapsed"
+                        IsHitTestVisible="False">
+                    <TextBlock x:Name="LoadingText"
+                               Text="Загрузка…"
+                               FontSize="13"
+                               Foreground="{DynamicResource TextMuted}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel VerticalAlignment="Bottom" Margin="16">
+                    <Border x:Name="SearchBanner"
+                            Padding="12,8"
+                            Margin="0,0,0,8"
+                            Background="{DynamicResource BgElevated}"
+                            BorderBrush="{DynamicResource BorderStrong}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Поиск по документу"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBright}"/>
+                                <TextBlock x:Name="SearchProgressText"
+                                           Text="Подготовка…"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="Отмена"
+                                    Style="{StaticResource ToolbarButton}"
+                                    VerticalAlignment="Center"
+                                    Click="CancelSearch_Click"/>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="ExportBanner"
+                            Padding="12,8"
+                            Background="{DynamicResource BgElevated}"
+                            BorderBrush="{DynamicResource BorderStrong}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Экспорт в Microsoft Word"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextBright}"/>
+                                <TextBlock x:Name="ExportStatusText"
+                                           Text="Подготовка…"
+                                           FontSize="12"
+                                           Foreground="{DynamicResource TextMuted}"
+                                           Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Content="Отмена"
+                                    Style="{StaticResource ToolbarButton}"
+                                    VerticalAlignment="Center"
+                                    Click="CancelExport_Click"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

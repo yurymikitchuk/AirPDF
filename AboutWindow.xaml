@@ -1,0 +1,40 @@
+<Window x:Class="AirPDF.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="О программе"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Width="360"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="{DynamicResource BgPanel}"
+        FontFamily="Segoe UI, Consolas"
+        ShowInTaskbar="False">
+    <Border Padding="16" BorderBrush="{DynamicResource BorderSubtle}" BorderThickness="0,1,0,0">
+        <StackPanel>
+            <TextBlock Text="AirPDF"
+                       Style="{StaticResource DialogTitle}"
+                       Margin="0,0,0,12"/>
+            <TextBlock x:Name="VersionText"
+                       Text="Номер версии: 0.9.5"
+                       FontSize="13"
+                       Foreground="{DynamicResource TextPrimary}"
+                       Margin="0,0,0,10"/>
+            <TextBlock Margin="0,0,0,14"
+                       FontSize="12"
+                       TextWrapping="Wrap">
+                <Hyperlink NavigateUri="https://github.com/yurymikitchuk/AirPDF/releases/latest"
+                           RequestNavigate="ReleaseLink_RequestNavigate"
+                           Foreground="{DynamicResource TextBright}">
+                    Скачать актуальный релиз на GitHub
+                </Hyperlink>
+            </TextBlock>
+            <Button Content="OK"
+                    Style="{StaticResource PrimaryButton}"
+                    HorizontalAlignment="Right"
+                    IsDefault="True"
+                    IsCancel="True"
+                    Click="Ok_Click"/>
+        </StackPanel>
+    </Border>
+</Window>
